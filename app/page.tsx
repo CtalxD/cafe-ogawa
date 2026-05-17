@@ -1,21 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import styles from './styles/page.module.css';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ScrollSmoother } from 'gsap/ScrollSmoother';
-import { CustomEase } from 'gsap/CustomEase';
-import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin';
-import SplitType from 'split-type';
 
 // Register GSAP plugins
 if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger, CustomEase);
-  // Register optional plugins if available
-  try { gsap.registerPlugin(ScrollSmoother); } catch(e) {}
-  try { gsap.registerPlugin(DrawSVGPlugin); } catch(e) {}
-  CustomEase.create('elastic', '0.37, 0, 0.63, 1');
+  gsap.registerPlugin(ScrollTrigger);
+  
+  // Optimize GSAP performance
+  gsap.ticker.lagSmoothing(0);
+  gsap.ticker.fps(60);
 }
 
 /* ============================================
@@ -174,88 +170,38 @@ const DrinkIcon = ({ type }: { type: string }) => {
 };
 
 /* ============================================
-   CINEMATIC KINETIC TYPOGRAPHY
+   SIMPLIFIED TYPOGRAPHY (No SplitType)
    ============================================ */
 const CinematicTypography = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-
+  
   useEffect(() => {
-    if (!headingRef.current || !containerRef.current) return;
-
+    if (!containerRef.current) return;
+    
     const ctx = gsap.context(() => {
-      const split = new SplitType(headingRef.current!, {
-        types: ['chars', 'words']
-      });
-
-      const chars = split.chars;
-      if (!chars || chars.length === 0) return;
-
-      // Phase 1: Extreme initial state — chars exploded across the universe
-      gsap.set(chars, {
-        opacity: 0,
-        filter: 'blur(24px)',
-        rotationX: () => gsap.utils.random(-360, 360),
-        rotationY: () => gsap.utils.random(-360, 360),
-        rotationZ: () => gsap.utils.random(-180, 180),
-        x: () => gsap.utils.random(-600, 600),
-        y: () => gsap.utils.random(-500, 500),
-        z: () => gsap.utils.random(-800, 800),
-        scale: () => gsap.utils.random(0.1, 0.7),
-        transformOrigin: 'center center',
-        color: () => gsap.utils.random(0, 1) > 0.5 ? '#F7BC12' : '#E4A9B8',
-      });
-
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: 'top 85%',
-          end: 'center 35%',
-          scrub: 1.2,
-          toggleActions: 'play none none reverse',
-        },
-      });
-
-      // Phase 2: Characters converge with magnetic snap + color reset
-      tl.to(chars, {
-        opacity: 1,
-        filter: 'blur(0px)',
-        rotationX: 0,
-        rotationY: 0,
-        rotationZ: 0,
-        x: 0,
-        y: 0,
-        z: 0,
-        scale: 1,
-        color: '#FFFDF7',
-        duration: 2.2,
-        stagger: {
-          each: 0.018,
-          from: 'random',
-          ease: 'power4.inOut',
-        },
-        ease: 'expo.out',
-      });
-
-      // Phase 3: Breathe — each char floats on its own sine wave
-      tl.to(chars, {
-        y: (i: number) => Math.sin(i * 0.45) * 7,
-        rotationZ: (i: number) => Math.sin(i * 0.3) * 1.5,
-        duration: 3,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-        stagger: { each: 0.04, repeat: -1, yoyo: true },
-      }, '-=0.8');
-
+      gsap.fromTo(containerRef.current,
+        { opacity: 0, y: 40, filter: 'blur(8px)' },
+        {
+          opacity: 1,
+          y: 0,
+          filter: 'blur(0px)',
+          duration: 1.2,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: 'top 85%',
+            toggleActions: 'play none none none',
+          },
+        }
+      );
     }, containerRef);
-
+    
     return () => ctx.revert();
   }, []);
-
+  
   return (
     <div ref={containerRef} className={styles.cinematicContainer}>
-      <h1 ref={headingRef} className={styles.cinematicHeading}>
+      <h1 className={styles.cinematicHeading}>
         Authentic Japanese Ramen{' '}
         <span className={styles.cinematicAccent}>Experience</span>
       </h1>
@@ -264,7 +210,7 @@ const CinematicTypography = () => {
 };
 
 /* ============================================
-   SCROLL REVEAL
+   SCROLL REVEAL (Optimized)
    ============================================ */
 const ScrollReveal = ({ children, className, direction = 'up' }: {
   children: React.ReactNode;
@@ -272,45 +218,34 @@ const ScrollReveal = ({ children, className, direction = 'up' }: {
   direction?: 'up' | 'down' | 'left' | 'right';
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-
+  
   useEffect(() => {
     if (!ref.current) return;
-
+    
+    const yStart = direction === 'up' ? 40 : direction === 'down' ? -40 : 0;
+    const xStart = direction === 'left' ? 40 : direction === 'right' ? -40 : 0;
+    
     const ctx = gsap.context(() => {
-      const yStart = direction === 'up' ? 80 : direction === 'down' ? -80 : 0;
-      const xStart = direction === 'left' ? 80 : direction === 'right' ? -80 : 0;
-      const rotStart = direction === 'left' ? -8 : direction === 'right' ? 8 : direction === 'up' ? 4 : -4;
-
       gsap.fromTo(ref.current,
-        {
-          opacity: 0,
-          y: yStart,
-          x: xStart,
-          scale: 0.88,
-          rotationZ: rotStart,
-          filter: 'blur(8px)',
-        },
+        { opacity: 0, y: yStart, x: xStart },
         {
           opacity: 1,
           y: 0,
           x: 0,
-          scale: 1,
-          rotationZ: 0,
-          filter: 'blur(0px)',
-          duration: 1.1,
-          ease: 'expo.out',
+          duration: 0.8,
+          ease: 'power2.out',
           scrollTrigger: {
             trigger: ref.current,
-            start: 'top bottom-=80',
-            toggleActions: 'play none none reverse',
+            start: 'top bottom-=60',
+            toggleActions: 'play none none none',
           },
         }
       );
     }, ref);
-
+    
     return () => ctx.revert();
   }, [direction]);
-
+  
   return (
     <div ref={ref} className={className}>
       {children}
@@ -323,34 +258,31 @@ const ScrollReveal = ({ children, className, direction = 'up' }: {
    ============================================ */
 const AnimatedCounter = ({ value, suffix = '' }: { value: string; suffix?: string }) => {
   const ref = useRef<HTMLSpanElement>(null);
-
+  
   useEffect(() => {
     if (!ref.current) return;
     const numVal = parseFloat(value);
     if (isNaN(numVal)) return;
-
+    
     const ctx = gsap.context(() => {
-      gsap.fromTo({ val: 0 },
-        { val: 0 },
-        {
-          val: numVal,
-          duration: 2,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: ref.current, start: 'top bottom-=100' },
-          onUpdate: function() {
-            if (ref.current) {
-              const v = this.targets()[0].val;
-              ref.current.textContent = Number.isInteger(numVal)
-                ? Math.round(v).toString()
-                : v.toFixed(1);
-            }
-          },
-        }
-      );
+      const obj = { val: 0 };
+      gsap.to(obj, {
+        val: numVal,
+        duration: 1.5,
+        ease: 'power2.out',
+        scrollTrigger: { trigger: ref.current, start: 'top bottom-=80' },
+        onUpdate: () => {
+          if (ref.current) {
+            ref.current.textContent = Number.isInteger(numVal)
+              ? Math.round(obj.val).toString()
+              : obj.val.toFixed(1);
+          }
+        },
+      });
     }, ref);
     return () => ctx.revert();
   }, [value]);
-
+  
   return <span ref={ref}>{value}</span>;
 };
 
@@ -366,165 +298,109 @@ export default function LandingPage() {
   const logoRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-
+  
   useEffect(() => { setMounted(true); }, []);
-
+  
   // ── Loading screen exit animation ──────────────────────
   useEffect(() => {
     if (!mounted || !loadingRef.current) return;
-
-    const tl = gsap.timeline({
-      onComplete: () => {
-        if (loadingRef.current) loadingRef.current.style.display = 'none';
+    
+    const ctx = gsap.context(() => {
+      if (progressRef.current) {
+        gsap.to(progressRef.current, {
+          scaleX: 1,
+          duration: 0.8,
+          ease: 'power2.inOut',
+          transformOrigin: 'left center',
+        });
       }
-    });
-
-    if (progressRef.current) {
-      tl.to(progressRef.current, {
-        scaleX: 1,
-        duration: 1.2,
-        ease: 'power2.inOut',
-        transformOrigin: 'left center',
+      
+      gsap.to(loadingRef.current, {
+        yPercent: -100,
+        duration: 0.7,
+        ease: 'power3.in',
+        delay: 0.3,
+        onComplete: () => {
+          if (loadingRef.current) loadingRef.current.style.display = 'none';
+        },
       });
-    }
-
-    tl.to(loadingRef.current, {
-      yPercent: -100,
-      duration: 0.9,
-      ease: 'expo.inOut',
-      delay: 0.2,
-    });
-
+    }, loadingRef);
+    
+    return () => ctx.revert();
   }, [mounted]);
-
+  
   useEffect(() => {
     if (!mounted) return;
     const handleScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [mounted]);
-
-  // ── Hero animations ────────────────────────────────────
+  
+  // ── Hero animations (Optimized) ────────────────────────
   useEffect(() => {
     if (!mounted || !heroRef.current) return;
-
+    
     const ctx = gsap.context(() => {
-
-      // Floating shapes — organic morphing motion
+      // Simple floating shapes
       const shapes = heroRef.current!.querySelectorAll(`.${styles.floatingShape}`);
       shapes.forEach((shape, index) => {
-        // Two-axis lissajous-like path
         gsap.to(shape, {
-          x: `+=${gsap.utils.random(60, 120)}`,
-          y: `+=${gsap.utils.random(40, 80)}`,
-          scale: gsap.utils.random(0.75, 1.35),
-          duration: gsap.utils.random(7, 14),
+          y: gsap.utils.random(-20, 20),
+          x: gsap.utils.random(-15, 15),
+          duration: gsap.utils.random(6, 10),
           repeat: -1,
           yoyo: true,
           ease: 'sine.inOut',
-          delay: index * 0.7,
-        });
-        // Independent rotation
-        gsap.to(shape, {
-          rotation: gsap.utils.random(-30, 30),
-          duration: gsap.utils.random(12, 20),
-          repeat: -1,
-          yoyo: true,
-          ease: 'none',
-          delay: index * 0.5,
+          delay: index * 0.4,
         });
       });
-
-      // Logo — multi-layered rotation + glow pulse
+      
+      // Logo rotation
       if (logoRef.current) {
         gsap.to(logoRef.current, {
           rotation: 360,
-          duration: 22,
+          duration: 20,
           repeat: -1,
-          ease: 'linear',
-        });
-
-        const glow = heroRef.current!.querySelector(`.${styles.heroLogoGlow}`);
-        if (glow) {
-          gsap.to(glow, {
-            scale: 1.4,
-            opacity: 0.5,
-            duration: 2.5,
-            repeat: -1,
-            yoyo: true,
-            ease: 'sine.inOut',
-          });
-        }
-
-        // Rings — counter-rotating
-        const ring1 = heroRef.current!.querySelector(`.${styles.heroLogoRing}`);
-        const ring2 = heroRef.current!.querySelector(`.${styles.heroLogoRing2}`);
-        if (ring1) gsap.to(ring1, { rotation: -360, duration: 18, repeat: -1, ease: 'linear' });
-        if (ring2) gsap.to(ring2, { rotation: 360, duration: 30, repeat: -1, ease: 'linear' });
-      }
-
-      // Scroll indicator — more dramatic bounce
-      const scrollIndicator = heroRef.current!.querySelector(`.${styles.scrollIndicator}`);
-      if (scrollIndicator) {
-        gsap.to(scrollIndicator, {
-          y: 18,
-          opacity: 0.3,
-          duration: 1.6,
-          repeat: -1,
-          yoyo: true,
-          ease: 'power2.inOut',
-        });
-      }
-
-      // Hero text — staggered cinematic entrance
-      const heroTextElements = heroRef.current!.querySelectorAll(
-        `.${styles.heroTag}, .${styles.heroSubtext}, .${styles.heroButtons}, .${styles.heroStats}`
-      );
-      gsap.fromTo(heroTextElements,
-        { opacity: 0, y: 50, filter: 'blur(12px)' },
-        {
-          opacity: 1,
-          y: 0,
-          filter: 'blur(0px)',
-          duration: 1.1,
-          stagger: 0.18,
-          ease: 'expo.out',
-          delay: 1.8, // after loading exit
-        }
-      );
-
-      // Parallax on hero content during scroll
-      const heroContent = heroRef.current!.querySelector(`.${styles.heroContent}`);
-      if (heroContent) {
-        gsap.to(heroContent, {
-          y: -120,
           ease: 'none',
-          scrollTrigger: {
-            trigger: heroRef.current,
-            start: 'top top',
-            end: 'bottom top',
-            scrub: 1.5,
-          },
         });
       }
-
-      // Radial gradient shift on scroll
-      gsap.to(heroRef.current, {
-        backgroundPositionY: '60%',
-        ease: 'none',
-        scrollTrigger: {
-          trigger: heroRef.current,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: 2,
-        },
+      
+      // Hero content entrance - FIXED VISIBILITY
+      gsap.fromTo(`.${styles.heroTag}`,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', delay: 1.2 }
+      );
+      
+      gsap.fromTo(`.${styles.heroSubtext}`,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', delay: 1.4 }
+      );
+      
+      gsap.fromTo(`.${styles.heroButtons}`,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', delay: 1.6 }
+      );
+      
+      gsap.fromTo(`.${styles.heroStats}`,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', delay: 1.8 }
+      );
+      
+      // Scroll indicator
+      gsap.to(`.${styles.scrollIndicator}`, {
+        y: 12,
+        opacity: 0.4,
+        duration: 1.4,
+        repeat: -1,
+        yoyo: true,
+        ease: 'power1.inOut',
       });
-
+      
     }, heroRef);
-
+    
     return () => ctx.revert();
   }, [mounted]);
-
+  
   // ── Navbar entrance ────────────────────────────────────
   useEffect(() => {
     if (!mounted) return;
@@ -532,321 +408,33 @@ export default function LandingPage() {
     if (navbar) {
       gsap.fromTo(navbar,
         { y: -100, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1, ease: 'expo.out', delay: 1.5 }
+        { y: 0, opacity: 1, duration: 0.8, ease: 'power2.out', delay: 1 }
       );
     }
   }, [mounted]);
-
-  // ── Section heading word-split animations ──────────────
+  
+  // ── Section animations on scroll ───────────────────────
   useEffect(() => {
     if (!mounted) return;
-
-    const ctx = gsap.context(() => {
-      // Animate every sectionTitle on scroll
-      const titles = document.querySelectorAll(`.${styles.sectionTitle}`);
-      titles.forEach((title) => {
-        const split = new SplitType(title as HTMLElement, { types: ['chars'] });
-        if (!split.chars) return;
-
-        gsap.fromTo(split.chars,
-          { opacity: 0, y: 60, rotationX: -90, transformOrigin: 'top center' },
-          {
-            opacity: 1,
-            y: 0,
-            rotationX: 0,
-            duration: 0.7,
-            stagger: 0.025,
-            ease: 'back.out(1.4)',
-            scrollTrigger: {
-              trigger: title,
-              start: 'top bottom-=60',
-              toggleActions: 'play none none reverse',
-            },
-          }
-        );
-      });
-
-      // Section tag pill — slide in from left
-      const tags = document.querySelectorAll(`.${styles.sectionTag}`);
-      tags.forEach((tag) => {
-        gsap.fromTo(tag,
-          { opacity: 0, x: -30, letterSpacing: '6px' },
-          {
-            opacity: 1,
-            x: 0,
-            letterSpacing: '2px',
-            duration: 0.8,
-            ease: 'expo.out',
-            scrollTrigger: {
-              trigger: tag,
-              start: 'top bottom-=40',
-              toggleActions: 'play none none reverse',
-            },
-          }
-        );
-      });
-
-      // Menu cards — staggered from center with depth
-      const menuCards = document.querySelectorAll(`.${styles.menuCard}`);
-      if (menuCards.length) {
-        gsap.fromTo(menuCards,
-          { opacity: 0, y: 50, scale: 0.9, rotationY: 15, transformOrigin: 'center bottom' },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            rotationY: 0,
-            duration: 0.9,
-            stagger: { each: 0.12, from: 'center' },
-            ease: 'expo.out',
-            scrollTrigger: {
-              trigger: menuCards[0],
-              start: 'top bottom-=60',
-              toggleActions: 'play none none reverse',
-            },
-          }
-        );
-      }
-
-      // Review cards — cascade with subtle rotation
-      const reviewCards = document.querySelectorAll(`.${styles.reviewCard}`);
-      reviewCards.forEach((card, i) => {
-        const dir = i % 2 === 0 ? -1 : 1;
-        gsap.fromTo(card,
-          { opacity: 0, y: 60, rotationZ: dir * 5, scale: 0.92 },
-          {
-            opacity: 1,
-            y: 0,
-            rotationZ: 0,
-            scale: 1,
-            duration: 1,
-            ease: 'expo.out',
-            scrollTrigger: {
-              trigger: card,
-              start: 'top bottom-=60',
-              toggleActions: 'play none none reverse',
-            },
-          }
-        );
-      });
-
-      // Drink cards — radial stagger burst
-      const drinkCards = document.querySelectorAll(`.${styles.drinkCard}`);
-      gsap.fromTo(drinkCards,
-        { opacity: 0, scale: 0.7, rotationZ: () => gsap.utils.random(-15, 15) },
-        {
-          opacity: 1,
-          scale: 1,
-          rotationZ: 0,
-          duration: 0.75,
-          stagger: { each: 0.08, from: 'random' },
-          ease: 'back.out(1.6)',
-          scrollTrigger: {
-            trigger: drinkCards[0],
-            start: 'top bottom-=40',
-            toggleActions: 'play none none reverse',
-          },
-        }
-      );
-
-      // Visit hours — slide in with stagger
-      const hourRows = document.querySelectorAll(`.${styles.visitHourRow}`);
-      gsap.fromTo(hourRows,
-        { opacity: 0, x: -24 },
-        {
-          opacity: 1,
-          x: 0,
-          duration: 0.5,
-          stagger: 0.1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: hourRows[0],
-            start: 'top bottom-=40',
-            toggleActions: 'play none none reverse',
-          },
-        }
-      );
-
-      // About swirl — spin-in
-      const swirlContainer = document.querySelector(`.${styles.aboutSwirlContainer}`);
-      if (swirlContainer) {
-        gsap.fromTo(swirlContainer,
-          { opacity: 0, scale: 0.4, rotation: -180 },
-          {
-            opacity: 1,
-            scale: 1,
-            rotation: 0,
-            duration: 1.4,
-            ease: 'expo.out',
-            scrollTrigger: {
-              trigger: swirlContainer,
-              start: 'top bottom-=60',
-              toggleActions: 'play none none reverse',
-            },
-          }
-        );
-
-        // Continuous swirl rotation
-        const swirl1 = swirlContainer.querySelector(`.${styles.aboutSwirl}`);
-        const swirl2 = swirlContainer.querySelector(`.${styles.aboutSwirl2}`);
-        const swirl3 = swirlContainer.querySelector(`.${styles.aboutSwirl3}`);
-        if (swirl1) gsap.to(swirl1, { rotation: 360, scale: 1.15, duration: 12, repeat: -1, yoyo: true, ease: 'sine.inOut' });
-        if (swirl2) gsap.to(swirl2, { rotation: -360, duration: 8, repeat: -1, ease: 'linear' });
-        if (swirl3) gsap.to(swirl3, { scale: 1.5, opacity: 0.35, duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut' });
-      }
-
-      // About values — pop in with bounce
-      const aboutValues = document.querySelectorAll(`.${styles.aboutValue}`);
-      gsap.fromTo(aboutValues,
-        { opacity: 0, y: 30, scale: 0.8 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.6,
-          stagger: 0.12,
-          ease: 'back.out(2)',
-          scrollTrigger: {
-            trigger: aboutValues[0],
-            start: 'top bottom-=40',
-            toggleActions: 'play none none reverse',
-          },
-        }
-      );
-
-      // Footer brand — gentle rise
-      const footerBrand = document.querySelector(`.${styles.footerBrand}`);
-      if (footerBrand) {
-        gsap.fromTo(footerBrand,
-          { opacity: 0, y: 30 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            ease: 'expo.out',
-            scrollTrigger: {
-              trigger: footerBrand,
-              start: 'top bottom',
-              toggleActions: 'play none none reverse',
-            },
-          }
-        );
-      }
-
-    });
-
-    return () => ctx.revert();
+    
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 300);
+    
+    return () => clearTimeout(timer);
   }, [mounted, activeMenuTab]);
-
-  // ── Magnetic hover for buttons ─────────────────────────
-  useEffect(() => {
-    if (!mounted) return;
-
-    const btns = document.querySelectorAll(`.${styles.btn}, .${styles.navCta}, .${styles.visitBtn}`);
-    const handlers: Array<{ el: Element; move: (e: MouseEvent) => void; leave: () => void }> = [];
-
-    btns.forEach((btn) => {
-      const move = (e: MouseEvent) => {
-        const rect = btn.getBoundingClientRect();
-        const dx = e.clientX - rect.left - rect.width / 2;
-        const dy = e.clientY - rect.top - rect.height / 2;
-        gsap.to(btn, {
-          x: dx * 0.28,
-          y: dy * 0.28,
-          duration: 0.4,
-          ease: 'power2.out',
-          overwrite: 'auto',
-        });
-      };
-      const leave = () => {
-        gsap.to(btn, { x: 0, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.4)', overwrite: 'auto' });
-      };
-      btn.addEventListener('mousemove', move as EventListener);
-      btn.addEventListener('mouseleave', leave as EventListener);
-      handlers.push({ el: btn, move, leave });
-    });
-
-    return () => {
-      handlers.forEach(({ el, move, leave }) => {
-        el.removeEventListener('mousemove', move as EventListener);
-        el.removeEventListener('mouseleave', leave as EventListener);
-      });
-    };
-  }, [mounted]);
-
-  // ── Card tilt on hover ─────────────────────────────────
-  useEffect(() => {
-    if (!mounted) return;
-
-    const cards = document.querySelectorAll(`.${styles.menuCard}, .${styles.drinkCard}, .${styles.reviewCard}`);
-    const handlers: Array<{ el: Element; move: (e: MouseEvent) => void; leave: () => void }> = [];
-
-    cards.forEach((card) => {
-      const move = (e: MouseEvent) => {
-        const rect = card.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-        const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-        gsap.to(card, {
-          rotationY: x * 8,
-          rotationX: -y * 8,
-          transformPerspective: 800,
-          duration: 0.4,
-          ease: 'power2.out',
-          overwrite: 'auto',
-        });
-      };
-      const leave = () => {
-        gsap.to(card, {
-          rotationY: 0,
-          rotationX: 0,
-          duration: 0.8,
-          ease: 'elastic.out(1, 0.5)',
-          overwrite: 'auto',
-        });
-      };
-      card.addEventListener('mousemove', move as EventListener);
-      card.addEventListener('mouseleave', leave as EventListener);
-      handlers.push({ el: card, move, leave });
-    });
-
-    return () => {
-      handlers.forEach(({ el, move, leave }) => {
-        el.removeEventListener('mousemove', move as EventListener);
-        el.removeEventListener('mouseleave', leave as EventListener);
-      });
-    };
-  }, [mounted, activeMenuTab]);
-
-  // ── Horizontal scroll line in footer ──────────────────
-  useEffect(() => {
-    if (!mounted) return;
-    const footerBottom = document.querySelector(`.${styles.footerBottom}`);
-    if (!footerBottom) return;
-    const ctx = gsap.context(() => {
-      gsap.fromTo(`.${styles.footerBottom}`,
-        { opacity: 0 },
-        {
-          opacity: 1,
-          duration: 1,
-          scrollTrigger: {
-            trigger: footerBottom,
-            start: 'top bottom',
-          },
-        }
-      );
-    });
-    return () => ctx.revert();
-  }, [mounted]);
-
-  const scrollTo = (id: string) => {
+  
+  // ── Simple hover effects (no mousemove listeners) ──────
+  const scrollTo = useCallback((id: string) => {
     const el = document.getElementById(id);
     if (el) {
       const top = el.getBoundingClientRect().top + window.scrollY - 70;
       window.scrollTo({ top, behavior: 'smooth' });
     }
     setMobileMenuOpen(false);
-  };
-
+  }, []);
+  
   if (!mounted) {
     return (
       <div className={styles.loadingScreen}>
@@ -854,7 +442,7 @@ export default function LandingPage() {
       </div>
     );
   }
-
+  
   return (
     <div className={styles.page}>
       {/* ── LOADING OVERLAY ── */}
@@ -867,7 +455,7 @@ export default function LandingPage() {
           </div>
         </div>
       </div>
-
+      
       {/* ============ NAVBAR ============ */}
       <nav className={`${styles.navbar} ${scrolled ? styles.navbarScrolled : ''}`}>
         <div className={styles.navbarInner}>
@@ -917,21 +505,15 @@ export default function LandingPage() {
           </div>
         )}
       </nav>
-
+      
       {/* ============ HERO ============ */}
       <section ref={heroRef} className={styles.hero} id="home">
         <div className={styles.heroBgDecor}>
-          <div className={styles.grainOverlay} />
           <div className={`${styles.floatingShape} ${styles.floatingShape1}`} />
           <div className={`${styles.floatingShape} ${styles.floatingShape2}`} />
           <div className={`${styles.floatingShape} ${styles.floatingShape3}`} />
-          <div className={`${styles.floatingShape} ${styles.floatingShape4}`} />
-          <div className={styles.heroGridPattern} />
-          <div className={styles.auroraLine1} />
-          <div className={styles.auroraLine2} />
-          <div className={styles.heroKanjiWatermark}>小川</div>
         </div>
-
+        
         <div className={styles.heroContent}>
           <div className={styles.heroText}>
             <div className={styles.heroTag}>
@@ -939,13 +521,13 @@ export default function LandingPage() {
               <span className={styles.heroTagLabel}>Ascot Vale, Melbourne</span>
               <span className={styles.heroTagDot} />
             </div>
-
+            
             <CinematicTypography />
-
+            
             <p className={styles.heroSubtext}>
               Rich handcrafted ramen, specialty drinks, and cozy Japanese café atmosphere in Ascot Vale.
             </p>
-
+            
             <div className={styles.heroButtons}>
               <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => scrollTo('menu')}>
                 <span>View Menu</span><IconArrowRight />
@@ -954,7 +536,7 @@ export default function LandingPage() {
                 Visit Cafe
               </button>
             </div>
-
+            
             <div className={styles.heroStats}>
               {[
                 { number: '4.8', label: 'Rating' },
@@ -973,26 +555,24 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
-
+          
           <div className={styles.heroVisual}>
             <div className={styles.heroLogoContainer}>
-              <div className={styles.heroLogoGlow} />
               <div ref={logoRef} className={styles.heroLogo}>
                 <span className={styles.heroLogoInner}>小川</span>
               </div>
               <div className={styles.heroLogoRing} />
               <div className={styles.heroLogoRing2} />
-              <div className={styles.heroLogoRing3} />
             </div>
           </div>
         </div>
-
+        
         <div className={styles.scrollIndicator}>
           <span className={styles.scrollText}>Scroll</span>
           <IconChevronDown />
         </div>
       </section>
-
+      
       {/* ============ MENU ============ */}
       <section id="menu" className={styles.section}>
         <div className={styles.sectionInner}>
@@ -1003,26 +583,19 @@ export default function LandingPage() {
               Rich broths simmered for 18+ hours, paired with handcrafted noodles and premium toppings.
             </p>
           </ScrollReveal>
-
+          
           <div className={styles.menuTabs}>
             {(['ramen', 'sides', 'extras'] as const).map((tab) => (
               <button
                 key={tab}
                 className={`${styles.menuTab} ${activeMenuTab === tab ? styles.menuTabActive : ''}`}
-                onClick={() => {
-                  gsap.fromTo(`.${styles.menuTab}[data-tab="${tab}"]`,
-                    { scale: 0.95 },
-                    { scale: 1, duration: 0.3, ease: 'back.out(2)' }
-                  );
-                  setActiveMenuTab(tab);
-                }}
-                data-tab={tab}
+                onClick={() => setActiveMenuTab(tab)}
               >
                 {tab === 'ramen' ? 'Ramen' : tab === 'sides' ? 'Sides & Rice' : 'Extras'}
               </button>
             ))}
           </div>
-
+          
           {activeMenuTab === 'ramen' && (
             <div className={styles.menuGrid}>
               {menuItems.map((item, index) => (
@@ -1055,7 +628,7 @@ export default function LandingPage() {
               ))}
             </div>
           )}
-
+          
           {activeMenuTab === 'sides' && (
             <div className={styles.sidesGrid}>
               {sides.map((item) => (
@@ -1068,7 +641,7 @@ export default function LandingPage() {
               ))}
             </div>
           )}
-
+          
           {activeMenuTab === 'extras' && (
             <div className={styles.extrasGrid}>
               <h3 className={styles.extrasTitle}>Customize Your Bowl</h3>
@@ -1101,7 +674,7 @@ export default function LandingPage() {
           )}
         </div>
       </section>
-
+      
       {/* ============ ABOUT ============ */}
       <section id="about" className={`${styles.section} ${styles.sectionAlt}`}>
         <div className={styles.sectionInner}>
@@ -1132,21 +705,18 @@ export default function LandingPage() {
             <ScrollReveal className={styles.aboutVisual} direction="right">
               <div className={styles.aboutSwirlContainer}>
                 <div className={styles.aboutSwirl} />
-                <div className={styles.aboutSwirl2} />
-                <div className={styles.aboutSwirl3} />
                 <div className={styles.aboutSwirlIcon}>
                   <svg width="44" height="44" viewBox="0 0 60 60" fill="none">
                     <circle cx="30" cy="30" r="28" stroke="white" strokeWidth="2" fill="none"/>
                     <path d="M20 30 Q30 15 40 30 Q30 45 20 30Z" fill="white" opacity="0.8"/>
                   </svg>
                 </div>
-                <div className={styles.aboutSwirlLabel}>小川</div>
               </div>
             </ScrollReveal>
           </div>
         </div>
       </section>
-
+      
       {/* ============ REVIEWS ============ */}
       <section className={styles.section}>
         <div className={styles.sectionInner}>
@@ -1172,7 +742,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
+      
       {/* ============ DRINKS ============ */}
       <section className={`${styles.section} ${styles.sectionAlt}`}>
         <div className={styles.sectionInner}>
@@ -1197,7 +767,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
+      
       {/* ============ VISIT ============ */}
       <section id="visit" className={styles.section}>
         <div className={styles.sectionInner}>
@@ -1250,7 +820,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
+      
       {/* ============ FOOTER ============ */}
       <footer className={styles.footer}>
         <div className={styles.footerGrid}>
